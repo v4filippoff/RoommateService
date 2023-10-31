@@ -1,0 +1,11 @@
+.DS_STORE
+thumbs.db
+.idea
+/*.sublime-project
+/*.sublime-workspace
+/.env
+/nginx.conf
+/vetur.config.js
+.vscode
+/venv/
+frontend/node_modules

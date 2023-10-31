@@ -1,0 +1,83 @@
+# Помимо конфигурации Poetry, здесь рекомендуется указывать настройки для остальных утилит и пакетов вместо
+# setup.cfg для пакетов, которые это поддерживают.
+[tool.poetry]
+name = "django-skeleton"
+version = "0.1.0"
+description = "Django skeleton project for Creonit"
+authors = ["Creonit"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+Django = "^3.2"
+djangorestframework = "^3.13"
+drf-spectacular = "^0.22"
+django-jazzmin = "^2.5"
+djoser = "^2.1"
+python-dotenv = "^0.20"
+django-debug-toolbar = "^3.4"
+celery = "^5.2.7"
+django-filter = "^21.1"
+drf-writable-nested = "^0.6"
+drf-exceptions-hog = "^0.2.0"
+psycopg2-binary = "^2.9.3"
+gunicorn = "^20.1.0"
+redis = "^4.3.3"
+django-redis = "^5.2.0"
+flower = "^1.0.0"
+Pillow = "^9.1.1"
+django-tinymce = "^3.4.0"
+django-mptt = "^0.13.4"
+python-slugify = "^6.1.2"
+pytest-django = "^4.5"
+pytest-factoryboy = "^2.5.0"
+django-ordered-model = "^3.6"
+django-celery-beat = "^2.3.0"
+django-streamfield = "^1.4.3"
+uvicorn = {extras = ["standard"], version = "^0.18.2"}
+transliterate = "^1.10.2"
+django-cors-headers = "^3.13.0"
+pandas = "^1.4.4"
+pysyge = "^1.2.0"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.0.259"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+addopts = "--ds=project.settings.test -v --disable-warnings"
+DJANGO_SETTINGS_MODULE = "project.settings.test"
+python_files = ["tests.py", "test_*.py", "*_test.py", "*_tests.py"]
+python_classes = ["*Test", "Test*"]
+
+[tool.isort]
+skip = [".git", "_pycache_", "docs", "migrations", "venv", "old", "manage.py", ".pytest_cache"]
+known_django = "django"
+src_paths = ["project", "apps"]
+sections = ["FUTURE", "STDLIB", "DJANGO", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+
+[tool.ruff]
+exclude = [
+    "__pycache__", "*/migrations/*",
+]
+select = [
+    "F", "E", "W", "C90", "I", "N", "D30", "UP", "S", "BLE", "B0", "A0", "C4", "DJ", "T20", "RET", "SIM", "ERA"
+]
+ignore = ["DJ012", "F84", "N818", "RET502", "RET503", "S308"]
+line-length = 120
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401", "F403"]
+"project/settings/*" = ["F401", "F403", "F405", "ERA"]
+"project/settings/dev.py" = ["S105"]
+"*/models/*" = ["A003"]
+"*/models.py" = ["A003"]
+
+[tool.ruff.isort]
+relative-imports-order = "closest-to-furthest"
+
+[tool.ruff.mccabe]
+max-complexity = 12
+

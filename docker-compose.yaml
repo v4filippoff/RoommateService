@@ -1,0 +1,52 @@
+version: '3.4'
+
+x-django: &django
+  build:
+    context: django
+    target: builder
+  working_dir: /app
+  env_file:
+    - ./.env.dist
+    - ./.env
+
+x-celery: &celery
+  build:
+    context: django
+    target: stage
+  depends_on:
+    - redis
+    - django
+
+services:
+  backend-web:
+    image: nginx:1.19
+    volumes:
+      - ./django/static/:/static/:cached
+      - ./app/docker/backend/nginx.conf:/etc/nginx/nginx.conf:ro
+    restart: always
+    depends_on:
+      - django
+
+  django:
+    <<: *django
+
+  redis:
+    image: redis:7.0
+    command: redis-server --appendonly yes
+
+  celery:
+    <<: *django
+    <<: *celery
+
+  celery-beat:
+    <<: *django
+    <<: *celery
+
+  celery-flower:
+    <<: *django
+    <<: *celery
+
+#  frontend:
+#    build: frontend
+#    env_file:
+#      - .env

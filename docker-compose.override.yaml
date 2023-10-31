@@ -1,0 +1,75 @@
+version: '3.4'
+
+services:
+  backend-web:
+    volumes:
+      - ./django/media:/media
+    ports:
+      - "8000:8000"
+    environment:
+      - TZ=${TIMEZONE}
+
+  django:
+    build:
+      context: ./django
+      target: dev
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./django:/app:cached
+    environment:
+      - DJANGO_SETTINGS_MODULE=project.settings.dev
+      - TZ=${TIMEZONE}
+
+  celery:
+    command: celery -A project worker -l debug
+    environment:
+      - TZ=${TIMEZONE}
+
+  celery-beat:
+    command: celery -A project beat -l debug --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - ./django:/app:cached
+    environment:
+      - TZ=${TIMEZONE}
+
+  celery-flower:
+    command: celery -A project flower -l info
+    ports:
+      - "5555:5555"
+    environment:
+      - TZ=${TIMEZONE}
+
+  redis:
+    volumes:
+      - redis-data:/data
+    environment:
+      - TZ=${TIMEZONE}
+
+  db:
+    image: postgres:14
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    environment:
+      - "POSTGRES_DB=${DB_NAME}"
+      - "POSTGRES_USER=${DB_USER}"
+      - "POSTGRES_PASSWORD=${DB_PASSWORD}"
+      - TZ=${TIMEZONE}
+    ports:
+      - "5432:5432"
+
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "${MAILHOG_HTTP_HOST}:${MAILHOG_HTTP_PORT}:8025"
+    environment:
+      - TZ=${TIMEZONE}
+
+#  frontend:
+#    ports:
+#      - "3000:3000"
+#    environment:
+#      - TZ=${TIMEZONE}
+
+volumes:
+  db-data:
+  redis-data:

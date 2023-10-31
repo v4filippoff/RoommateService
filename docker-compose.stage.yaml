@@ -1,0 +1,76 @@
+version: '3.4'
+
+services:
+  django:
+    build:
+      context: django
+      target: stage
+    entrypoint: ./entrypoint.sh
+    restart: unless-stopped
+    depends_on:
+      - db
+      - redis
+    command: gunicorn --env DJANGO_SETTINGS_MODULE=project.settings.stage project.asgi:application -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+    volumes:
+      - /var/www/storage/${CI_PROJECT_NAME}-${CI_COMMIT_BRANCH}/media:/app/media
+      - ./django/static:/app/static
+    ulimits:
+      core: 0
+
+  redis:
+    restart: unless-stopped
+    volumes:
+      - /var/www/storage/${CI_PROJECT_NAME}-${CI_COMMIT_BRANCH}/redis:/data
+
+  celery:
+    restart: unless-stopped
+    command: celery -A project worker -c 1 -l error
+
+  celery-beat:
+    restart: unless-stopped
+    command: celery -A project beat -l error --scheduler django_celery_beat.schedulers:DatabaseScheduler
+
+  celery-flower:
+    restart: unless-stopped
+    command: celery -A project flower -l error
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-flower.rule=Host(`flower-${CI_ENVIRONMENT_DOMAIN}`)"
+      - "traefik.http.services.${COMPOSE_PROJECT_NAME}-flower.loadbalancer.server.port=5555"
+      - "traefik.http.services.${COMPOSE_PROJECT_NAME}-flower.middlewares=auth"
+
+  backend-web:
+    restart: unless-stopped
+    volumes:
+      - /var/www/storage/${CI_PROJECT_NAME}-${CI_COMMIT_BRANCH}/media:/media
+      - ./app/docker/backend/nginx.conf:/etc/nginx/nginx.conf:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}.rule=Host(`${CI_ENVIRONMENT_DOMAIN}`)"
+      - "traefik.http.services.${COMPOSE_PROJECT_NAME}.loadbalancer.server.port=8000"
+
+  db:
+    image: postgres:14
+    restart: unless-stopped
+    volumes:
+      - /var/www/storage/${CI_PROJECT_NAME}-${CI_COMMIT_BRANCH}/postgres:/var/lib/postgresql/data
+    environment:
+      - "POSTGRES_DB=${DB_NAME}"
+      - "POSTGRES_USER=${DB_USER}"
+      - "POSTGRES_PASSWORD=${DB_PASSWORD}"
+
+  frontend:
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-frontend.rule=Host(`frontend-${CI_ENVIRONMENT_DOMAIN}`)"
+      - "traefik.http.services.${COMPOSE_PROJECT_NAME}-frontend.loadbalancer.server.port=3000"
+
+  mailhog:
+    image: mailhog/mailhog
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-mailhog.rule=Host(`mail-${CI_ENVIRONMENT_DOMAIN}`)"
+      - "traefik.http.services.${COMPOSE_PROJECT_NAME}-mailhog.loadbalancer.server.port=8025"
+      - "traefik.http.routers.${COMPOSE_PROJECT_NAME}-mailhog.tls.certresolver=default"
