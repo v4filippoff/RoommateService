@@ -24,10 +24,15 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
     'rest_framework',
     'celery',
     'django_celery_beat',
     'drf_spectacular',
+    'phonenumber_field',
+    'django_cleanup.apps.CleanupConfig',
+
+    'apps.user',
 ]
 
 MIDDLEWARE = [
@@ -41,6 +46,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+AUTH_USER_MODEL = 'user.User'
 
 ROOT_URLCONF = 'project.urls'
 

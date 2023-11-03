@@ -38,6 +38,8 @@ transliterate = "^1.10.2"
 django-cors-headers = "^3.13.0"
 pandas = "^1.4.4"
 pysyge = "^1.2.0"
+django-phonenumber-field = {extras = ["phonenumbers"], version = "^7.2.0"}
+django-cleanup = "^8.0.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.0.259"
