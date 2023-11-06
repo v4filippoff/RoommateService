@@ -11,8 +11,9 @@ from rest_framework.response import Response
 from .dto import UserAuthorizationAttemptDTO
 from .exceptions import AuthorizationError
 from .models import User
-from .serializers import AuthorizationSerializer, CreateAuthorizationCodeSerializer
-from .services import UserAuthorizationService, AuthorizationCodeService
+from .serializers import AuthorizationSerializer, CreateAuthorizationCodeSerializer, RegistrationSerializer, \
+    UserSerializer
+from .services import UserAuthorizationService, AuthorizationCodeService, UserService
 
 
 @extend_schema_view(
@@ -27,16 +28,24 @@ from .services import UserAuthorizationService, AuthorizationCodeService
         responses={200: inline_serializer('authorization', {'access': serializers.CharField(),
                                                             'refresh': serializers.CharField()})}
     ),
+    registration=extend_schema(
+        summary='Регистрация пользователя',
+        request=RegistrationSerializer,
+        responses={201: UserSerializer}
+    ),
 )
 class UserViewSet(viewsets.GenericViewSet):
     """ViewSet для пользователей"""
     queryset = User.objects.all()
 
     def get_serializer_class(self):
-        if self.action == 'create_authorization_code':
-            return CreateAuthorizationCodeSerializer
-        elif self.action == 'authorization':
-            return AuthorizationSerializer
+        match self.action:
+            case'create_authorization_code':
+                return CreateAuthorizationCodeSerializer
+            case 'authorization':
+                return AuthorizationSerializer
+            case 'registration':
+                return RegistrationSerializer
 
     def get_permissions(self):
         if self.action in ('create_authorization_code', 'authorization',):
@@ -70,8 +79,16 @@ class UserViewSet(viewsets.GenericViewSet):
                                                                  code=serializer.validated_data['code'])
         try:
             authorization_service = UserAuthorizationService()
-            token = authorization_service.authorize(user_authorization_attempt)
+            token = authorization_service.authorization(user_authorization_attempt)
         except AuthorizationError as exc:
             raise ValidationError(str(exc))
         else:
             return Response(asdict(token), status=status.HTTP_200_OK)
+
+    @action(methods=['POST'], detail=False, url_path='registration', url_name='registration')
+    def registration(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user_login = request.user.get_username()
+        user = UserService.registration(user_login=user_login, **serializer.validated_data)
+        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)

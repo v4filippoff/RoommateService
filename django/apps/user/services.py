@@ -26,6 +26,22 @@ class UserService:
         self._user = user
 
     @staticmethod
+    @transaction.atomic
+    def registration(user_login: str, **user_data) -> User:
+        """Регистрация пользователя"""
+        user_login_kwargs = {User.USERNAME_FIELD: user_login}
+        user = User.objects.get(**user_login_kwargs)
+        for field, value in user_data.items():
+            setattr(user, field, value)
+        user.save()
+
+        if 'email' in user_data:
+            message_service = UserMessageService(recipients=[user.email])
+            message_service.send_notification_after_success_registration(user_name=user.get_short_name())
+
+        return user
+
+    @staticmethod
     def get_user_identifier_type_by_value(value: str) -> UserIdentifierType:
         """Получить тип идентификации пользователя по значению"""
         try:
@@ -45,16 +61,13 @@ class UserAuthorizationService:
     """Сервис для авторизации пользователя"""
 
     @transaction.atomic
-    def authorize(self, user_authorization_attempt: UserAuthorizationAttemptDTO) -> JWTTokenDTO:
-        """Авторизовать пользователя по данным для входа"""
-        user_lookup_kwargs = {User.USERNAME_FIELD: user_authorization_attempt.login}
-        user = User.objects.filter(**user_lookup_kwargs).first()
-        if not user:
-            raise AuthorizationError('Пользователь не найден.')
-
+    def authorization(self, user_authorization_attempt: UserAuthorizationAttemptDTO) -> JWTTokenDTO:
+        """Авторизовать пользователя"""
         authorization_code_service = AuthorizationCodeService(user_authorization_attempt.login)
         authorization_code = authorization_code_service.validate(user_authorization_attempt.code)
         authorization_code_service.use(authorization_code)
+        user_login_kwargs = {User.USERNAME_FIELD: user_authorization_attempt.login}
+        user, _ = User.objects.get_or_create(**user_login_kwargs)
         refresh = RefreshToken.for_user(user)
         return JWTTokenDTO(access=str(refresh.access_token), refresh=str(refresh))
 
@@ -82,7 +95,7 @@ class AuthorizationCodeService:
             expiration_date=self._generate_expiration_date()
         )
         message_service = UserMessageService(recipients=[new_authorization_code.login])
-        message_service.send_authorization_code(new_authorization_code.code)
+        message_service.send_authorization_code(code=new_authorization_code.code)
         return new_authorization_code
 
     def use(self, authorization_code: AuthorizationCode) -> None:
@@ -146,6 +159,10 @@ class UserMessageService:
     def send_authorization_code(self, code: str) -> None:
         """Отправить код для авторизации"""
         message = f'Ваш код для авторизации: {code}'
+        self._send_message(message)
+
+    def send_notification_after_success_registration(self, user_name: str) -> None:
+        message = f'{user_name.title()}, вы успешно зарегистрировались!'
         self._send_message(message)
 
     def _send_message(self, message_text: str) -> MessageResultDTO:

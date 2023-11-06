@@ -39,17 +39,18 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     phone_number = PhoneNumberField(verbose_name='Номер телефона', unique=True,
                                     error_messages={'unique': 'Пользователь с таким номером телефона уже существует.'})
-    first_name = models.CharField(max_length=150, verbose_name='Имя',
+    first_name = models.CharField(max_length=150, verbose_name='Имя', blank=True,
                                   validators=[RegexValidator(regex=r'^[a-zA-Zа-яА-Я]+$', message='Возможны только буквы.')])
-    last_name = models.CharField(max_length=150, verbose_name='Фамилия',
+    last_name = models.CharField(max_length=150, verbose_name='Фамилия', blank=True,
                                  validators=[RegexValidator(regex=r'^[a-zA-Zа-яА-Я]+$', message='Возможны только буквы.')])
     patronymic = models.CharField(max_length=150, verbose_name='Отчество', blank=True,
                                   validators=[RegexValidator(regex=r'^[a-zA-Zа-яА-Я]+$', message='Возможны только буквы.')])
-    email = models.EmailField(verbose_name='Email')
-    dob = models.DateField(verbose_name='Дата рождения', null=True)
-    gender = models.CharField(max_length=6, verbose_name='Пол', choices=Genders.choices)
-    status = models.CharField(max_length=100, verbose_name='Статус', choices=Statuses.choices, default=Statuses.LOOKING_FOR)
-    about_me = models.CharField(max_length=2048, verbose_name='Обо мне')
+    email = models.EmailField(verbose_name='Email', blank=True)
+    dob = models.DateField(verbose_name='Дата рождения', null=True, blank=True,)
+    gender = models.CharField(max_length=6, verbose_name='Пол', choices=Genders.choices, blank=True,)
+    status = models.CharField(max_length=100, verbose_name='Статус', choices=Statuses.choices,
+                              default=Statuses.LOOKING_FOR, blank=True)
+    about_me = models.CharField(max_length=2048, verbose_name='Обо мне', blank=True)
     avatar = models.ImageField(upload_to=upload_avatar, verbose_name='Аватарка', blank=True, null=True,
                                validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'heic'])])
 
