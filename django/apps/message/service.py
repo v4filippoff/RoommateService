@@ -56,10 +56,10 @@ class MessaggioSender(MessageSender):
                 ]
             }
         }
-        tasks.send_message.apply_async(args=(self.api_url, self.get_default_headers(), json_data))
+        tasks.send_message.apply_async(args=(self.api_url, self._get_default_headers(), json_data))
         return MessageResultDTO(status=MessageSendingStatus.PENDING)
 
-    def get_default_headers(self) -> dict:
+    def _get_default_headers(self) -> dict:
         return {'Messaggio-Login': self.login}
 
 

@@ -26,16 +26,16 @@ class UserService:
         self._user = user
 
     @staticmethod
-    def get_user_identifier_type_by_value(login: str) -> UserIdentifierType:
+    def get_user_identifier_type_by_value(value: str) -> UserIdentifierType:
         """Получить тип идентификации пользователя по значению"""
         try:
-            parsed_number = phonenumbers.parse(login, None)
+            parsed_number = phonenumbers.parse(value, None)
             if phonenumbers.is_valid_number(parsed_number):
                 return UserIdentifierType.PHONE_NUMBER
         except NumberParseException:
             pass
 
-        if re.search(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', login):
+        if re.search(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', value):
             return UserIdentifierType.EMAIL
 
         return UserIdentifierType.UNDEFINED
@@ -72,7 +72,7 @@ class AuthorizationCodeService:
         if not self._is_login_valid():
             raise AuthorizationError('Некорректный логин.')
 
-        countdown = self.get_countdown()
+        countdown = self._get_countdown()
         if countdown:
             raise AuthorizationError(f'Отправка кода для авторизации будет возможна через {countdown} секунд.')
 
@@ -103,7 +103,7 @@ class AuthorizationCodeService:
 
         return authorization_code
 
-    def get_countdown(self) -> int:
+    def _get_countdown(self) -> int:
         """Получить время в секундах, по истечении которого можно будет отправить код для авторизации.
         Если вернулось значение = 0, значит можно снова отправить код авторизации пользователю
         """
