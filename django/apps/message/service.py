@@ -10,7 +10,7 @@ class MessageSender(metaclass=ABCMeta):
     """Абстрактный класс для отправки сообщений пользователям"""
 
     def __init__(self, message: MessageDTO):
-        self._message = MessageDTO
+        self._message = message
 
     @abstractmethod
     def send(self) -> MessageResultDTO:

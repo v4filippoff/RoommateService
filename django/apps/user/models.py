@@ -81,3 +81,34 @@ class User(AbstractBaseUser, PermissionsMixin):
     def get_short_name(self) -> str:
         self.first_name: str
         return self.first_name.title().strip()
+
+
+class CodeAbstract(models.Model):
+    """Абстрактная модель для шестизначного кода"""
+    CODE_LENGTH = 6
+
+    code = models.CharField(validators=[
+        RegexValidator(regex=r'^\d{' + str(CODE_LENGTH) + r'}$', message=f'Возможны только {CODE_LENGTH} цифр от 0 до 9')
+    ], max_length=CODE_LENGTH, verbose_name='Код')
+    expiration_date = models.DateTimeField(verbose_name='Срок годности')
+    created_at = models.DateTimeField(default=timezone.now, verbose_name='Время создания')
+    is_used = models.BooleanField(default=False, verbose_name='Использован')
+
+    class Meta:
+        verbose_name = 'Абстрактный код'
+        verbose_name_plural = 'Абстрактные коды'
+        abstract = True
+
+
+class AuthorizationCode(CodeAbstract):
+    """Модель для кода авторизации
+    login: номер телефона, email и тд.
+    """
+    login = models.CharField(max_length=100, verbose_name='Логин')
+
+    class Meta:
+        verbose_name = 'Код для авторизации'
+        verbose_name_plural = 'Коды для авторизации'
+
+    def __str__(self):
+        return f'{self.login} - {self.code}'

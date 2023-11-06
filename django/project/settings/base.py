@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'phonenumber_field',
     'django_cleanup.apps.CleanupConfig',
+    'constance',
 
     'apps.user',
 ]
@@ -121,6 +122,9 @@ USE_DJANGO_JQUERY = True
 REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
     'PAGE_SIZE': 10
 }
 
@@ -148,3 +152,21 @@ SPECTACULAR_SETTINGS = {
 
 EMAIL_HOST = os.getenv('EMAIL_HOST', '')
 EMAIL_PORT = os.getenv('EMAIL_PORT', '')
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=3),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': True,
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+    "TOKEN_TYPE_CLAIM": "token_type",
+}
+
+CONSTANCE_BACKEND = 'constance.backends.database.DatabaseBackend'
+CONSTANCE_CONFIG = {
+    'AUTHORIZATION_CODE_EXPIRES_IN': (3, 'Срок действия одноразового кода авторизации (в минутах)'),
+    'AUTHORIZATION_CODE_COUNTDOWN': (1, 'Время, по истечении которого можно повторно запросить код для авторизации (в минутах)'),
+}
