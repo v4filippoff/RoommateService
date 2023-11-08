@@ -53,6 +53,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     about_me = models.CharField(max_length=2048, verbose_name='Обо мне', blank=True)
     avatar = models.ImageField(upload_to=upload_avatar, verbose_name='Аватарка', blank=True, null=True,
                                validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'heic'])])
+    datetime_consent_to_processing_of_personal_data = models.DateTimeField(auto_now_add=True,
+                                                                           verbose_name='Дата и время согласия пользователя на обработку персональных данных')
 
     is_staff = models.BooleanField(verbose_name='Статус персонала', default=False,
                                    help_text='Определяет, может ли пользователь войти на сайт администратора.')
