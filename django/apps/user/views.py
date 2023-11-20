@@ -11,22 +11,23 @@ from rest_framework.response import Response
 from .dto import UserAuthorizationAttemptDTO
 from .exceptions import AuthorizationError
 from .models import User
-from .serializers import AuthorizationSerializer, CreateAuthorizationCodeSerializer, RegistrationSerializer, \
-    UserSerializer
+from .permissions import IsFullRegistered
+from .serializers import AuthorizationSerializer, CreateOTPSerializer, RegistrationSerializer, UserSerializer
 from .services import UserAuthorizationService, AuthorizationCodeService, UserService
 
 
 @extend_schema_view(
-    create_authorization_code=extend_schema(
-        summary='Создание кода для авторизации/регистрации',
-        request=CreateAuthorizationCodeSerializer,
+    create_otp=extend_schema(
+        summary='Создание одноразового кода (OTP)',
+        request=CreateOTPSerializer,
         responses={204: None}
     ),
     authorization=extend_schema(
         summary='Получение токена авторизации',
         request=AuthorizationSerializer,
         responses={200: inline_serializer('authorization', {'access': serializers.CharField(),
-                                                            'refresh': serializers.CharField()})}
+                                                            'refresh': serializers.CharField(),
+                                                            'is_registered': serializers.BooleanField()})}
     ),
     registration=extend_schema(
         summary='Регистрация пользователя',
@@ -40,23 +41,25 @@ class UserViewSet(viewsets.GenericViewSet):
 
     def get_serializer_class(self):
         match self.action:
-            case'create_authorization_code':
-                return CreateAuthorizationCodeSerializer
+            case'create_otp':
+                return CreateOTPSerializer
             case 'authorization':
                 return AuthorizationSerializer
             case 'registration':
                 return RegistrationSerializer
 
     def get_permissions(self):
-        if self.action in ('create_authorization_code', 'authorization',):
+        if self.action in ('create_otp', 'authorization',):
             self.permission_classes = (AllowAny,)
-        else:
+        elif self.action in ('registration',):
             self.permission_classes = (IsAuthenticated,)
+        else:
+            self.permission_classes = (IsAuthenticated, IsFullRegistered)
         return [permission() for permission in self.permission_classes]
 
-    @action(methods=['POST'], detail=False, url_path='create-authorization-code', url_name='create_authorization_code')
-    def create_authorization_code(self, request):
-        """Создать код авторизации"""
+    @action(methods=['POST'], detail=False, url_path='create-otp', url_name='create_otp')
+    def create_otp(self, request):
+        """Создать одноразовый код (OTP)"""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         authorization_code_service = AuthorizationCodeService(serializer.validated_data['login'])
@@ -73,6 +76,7 @@ class UserViewSet(viewsets.GenericViewSet):
 
     @action(methods=['POST'], detail=False, url_path='authorization', url_name='authorization')
     def authorization(self, request):
+        """Авторизация по логину и OTP"""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user_authorization_attempt = UserAuthorizationAttemptDTO(login=serializer.validated_data['login'],

@@ -53,7 +53,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     about_me = models.CharField(max_length=2048, verbose_name='Обо мне', blank=True)
     avatar = models.ImageField(upload_to=upload_avatar, verbose_name='Аватарка', blank=True, null=True,
                                validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'heic'])])
-    datetime_consent_to_processing_of_personal_data = models.DateTimeField(auto_now_add=True,
+    datetime_consent_to_processing_of_personal_data = models.DateTimeField(default=None, null=True,
                                                                            verbose_name='Дата и время согласия пользователя на обработку персональных данных')
 
     is_staff = models.BooleanField(verbose_name='Статус персонала', default=False,
@@ -74,6 +74,10 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return f'{self.get_full_name()} ({self.phone_number})'
+
+    @property
+    def is_registered(self) -> bool:
+        return bool(self.datetime_consent_to_processing_of_personal_data)
 
     def get_full_name(self) -> str:
         self.last_name: str

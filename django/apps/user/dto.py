@@ -6,6 +6,7 @@ class JWTTokenDTO:
     """JWT Токен"""
     access: str
     refresh: str
+    is_registered: bool
 
 
 @dataclass

@@ -69,7 +69,8 @@ class UserAuthorizationService:
         user_login_kwargs = {User.USERNAME_FIELD: user_authorization_attempt.login}
         user, _ = User.objects.get_or_create(**user_login_kwargs)
         refresh = RefreshToken.for_user(user)
-        return JWTTokenDTO(access=str(refresh.access_token), refresh=str(refresh))
+        return JWTTokenDTO(access=str(refresh.access_token), refresh=str(refresh),
+                           is_registered=user.is_registered)
 
 
 class AuthorizationCodeService:

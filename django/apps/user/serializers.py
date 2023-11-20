@@ -1,10 +1,10 @@
-from django.db import transaction
+from django.utils import timezone
 from rest_framework import serializers
 
 from .models import AuthorizationCode, User
 
 
-class CreateAuthorizationCodeSerializer(serializers.ModelSerializer):
+class CreateOTPSerializer(serializers.ModelSerializer):
     """Сериализатор для генерации кода авторизации"""
 
     class Meta:
@@ -35,6 +35,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
         if not attrs['consent_to_processing_of_personal_data']:
             raise serializers.ValidationError('Необходимо дать согласие на обработку персональных данных.')
         attrs.pop('consent_to_processing_of_personal_data')
+        attrs['datetime_consent_to_processing_of_personal_data'] = timezone.now()
         return attrs
 
 
