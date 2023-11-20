@@ -2,6 +2,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from .models import AuthorizationCode, User
+from ..city.serializers import CitySerializer
 
 
 class CreateOTPSerializer(serializers.ModelSerializer):
@@ -27,7 +28,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('first_name', 'last_name', 'patronymic', 'email', 'dob', 'gender', 'status', 'about_me', 'avatar',
-                  'consent_to_processing_of_personal_data')
+                  'city', 'consent_to_processing_of_personal_data')
         extra_kwargs = {f: {'required': True} for f in fields
                         if f not in ('patronymic', 'avatar')}
 
@@ -41,9 +42,10 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     """Сериализатор для данных пользователя"""
+    city = CitySerializer()
 
     class Meta:
         model = User
         fields = ('phone_number', 'first_name', 'last_name', 'patronymic', 'email', 'dob', 'gender', 'status',
-                  'about_me', 'avatar')
-        read_only_fields = fields
+                  'about_me', 'avatar', 'city')
+        read_only_fields = ('phone_number',)

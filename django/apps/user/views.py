@@ -9,7 +9,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from .dto import UserAuthorizationAttemptDTO
-from .exceptions import AuthorizationError
+from .exceptions import AuthorizationError, RegistrationError
 from .models import User
 from .permissions import IsFullRegistered
 from .serializers import AuthorizationSerializer, CreateOTPSerializer, RegistrationSerializer, UserSerializer
@@ -34,6 +34,15 @@ from .services import UserAuthorizationService, AuthorizationCodeService, UserSe
         request=RegistrationSerializer,
         responses={201: UserSerializer}
     ),
+    show_me=extend_schema(
+        summary='Получить данные пользователя',
+        responses={200: UserSerializer}
+    ),
+    update_me=extend_schema(
+        summary='Обновить данные пользователя',
+        request=UserSerializer,
+        responses={200: UserSerializer}
+    ),
 )
 class UserViewSet(viewsets.GenericViewSet):
     """ViewSet для пользователей"""
@@ -47,6 +56,10 @@ class UserViewSet(viewsets.GenericViewSet):
                 return AuthorizationSerializer
             case 'registration':
                 return RegistrationSerializer
+            case 'show_me':
+                return UserSerializer
+            case 'update_me':
+                return UserSerializer
 
     def get_permissions(self):
         if self.action in ('create_otp', 'authorization',):
@@ -94,5 +107,22 @@ class UserViewSet(viewsets.GenericViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user_login = request.user.get_username()
-        user = UserService.registration(user_login=user_login, **serializer.validated_data)
-        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+        try:
+            user = UserService.registration(user_login=user_login, **serializer.validated_data)
+        except RegistrationError as exc:
+            raise ValidationError(str(exc))
+        else:
+            return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+
+    @action(methods=['GET'], detail=False, url_path='show-me', url_name='show_me')
+    def show_me(self, request):
+        serializer = self.get_serializer(instance=request.user)
+        return Response(data=serializer.data, status=status.HTTP_200_OK)
+
+    @action(methods=['PATCH'], detail=False, url_path='update-me', url_name='update_me')
+    def update_me(self, request):
+        serializer = self.get_serializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        user_service = UserService(request.user)
+        user = user_service.update_user(**serializer.validated_data)
+        return Response(UserSerializer(user).data, status=status.HTTP_200_OK)

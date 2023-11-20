@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'constance',
 
     'apps.user',
+    'apps.city',
 ]
 
 MIDDLEWARE = [
@@ -126,7 +127,8 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    'PAGE_SIZE': 10
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20
 }
 
 SILENCED_SYSTEM_CHECKS = ['rest_framework.W001']

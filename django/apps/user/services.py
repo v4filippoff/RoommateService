@@ -12,7 +12,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from .dto import UserAuthorizationAttemptDTO, JWTTokenDTO
 from .enums import UserIdentifierType
-from .exceptions import AuthorizationError
+from .exceptions import AuthorizationError, RegistrationError
 from .models import AuthorizationCode, User, CodeAbstract
 from ..message.dto import MessageDTO, MessageResultDTO
 from ..message.enums import MessageType, MessageSendingStatus
@@ -31,9 +31,11 @@ class UserService:
         """Регистрация пользователя"""
         user_login_kwargs = {User.USERNAME_FIELD: user_login}
         user = User.objects.get(**user_login_kwargs)
-        for field, value in user_data.items():
-            setattr(user, field, value)
-        user.save()
+        if user.is_registered:
+            raise RegistrationError('Пользователь уже зарегистрирован.')
+
+        user_service = UserService(user)
+        user = user_service.update_user(**user_data)
 
         if 'email' in user_data:
             message_service = UserMessageService(recipients=[user.email])
@@ -55,6 +57,13 @@ class UserService:
             return UserIdentifierType.EMAIL
 
         return UserIdentifierType.UNDEFINED
+
+    def update_user(self, **new_user_data) -> User:
+        """Обновить данные пользователя"""
+        for field, value in new_user_data.items():
+            setattr(self._user, field, value)
+        self._user.save()
+        return self._user
 
 
 class UserAuthorizationService:
