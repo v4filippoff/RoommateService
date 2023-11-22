@@ -1,4 +1,5 @@
 import os
+import time
 from abc import ABCMeta, abstractmethod
 
 from . import tasks
@@ -25,7 +26,7 @@ def get_message_sender(message_type: MessageType, message: MessageDTO) -> Messag
 
     match message_type:
         case MessageType.SMS:
-            return MessaggioSender(message)
+            return SMSGorodSender(message)
         case MessageType.EMAIL:
             return EmailSender(message)
         case MessageType.CALL:
@@ -34,33 +35,30 @@ def get_message_sender(message_type: MessageType, message: MessageDTO) -> Messag
             return None
 
 
-class MessaggioSender(MessageSender):
-    """Отправитель смс сообщений (сторонний сервис Messaggio)"""
+class SMSGorodSender(MessageSender):
+    """Отправитель смс сообщений (сторонний сервис sms gorod)"""
 
-    api_url = os.getenv('MESSAGGIO_API_URL')
-    login = os.getenv('MESSAGGIO_LOGIN')
-    sender_code = os.getenv('MESSAGGIO_SENDER_CODE')
+    api_url = os.getenv('SMSGOROD_API_URL')
+    api_key = os.getenv('SMSGOROD_API_KEY')
 
     def send(self) -> MessageResultDTO:
         json_data = {
-            'recipients': [{'phone': r} for r in self._message.recipients],
-            'channels': ['sms'],
-            'options': {'ttl': 60},
-            'sms': {
-                'from': self.sender_code,
-                'content': [
-                    {
-                        'type': 'text',
-                        'text': self._message.content
-                    }
-                ]
-            }
+            'apiKey': self.api_key,
+            'sms': [
+                {
+                    'channel': 'digit',
+                    'text': self._message.content,
+                    'phone': r.replace('+', ''),
+                    'plannedAt': int(time.time())
+                }
+                for r in self._message.recipients
+            ]
         }
         tasks.send_message.apply_async(args=(self.api_url, self._get_default_headers(), json_data))
         return MessageResultDTO(status=MessageSendingStatus.PENDING)
 
     def _get_default_headers(self) -> dict:
-        return {'Messaggio-Login': self.login}
+        return {}
 
 
 class EmailSender(MessageSender):
