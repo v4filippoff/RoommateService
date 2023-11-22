@@ -1,13 +1,29 @@
 - model: card.cardtag
   pk: 1
   fields:
-    code: 'paykeeper'
-    name: 'Российская карта'
-    available_currencies: [3]
+    name: 'Можно с домашними питомцами'
+    code: 'allowed_pets'
 
 - model: card.cardtag
-  pk: 1
+  pk: 2
   fields:
-    code: 'paykeeper'
-    name: 'Российская карта'
-    available_currencies: [3]
+    name: 'Можно с детьми'
+    code: 'allowed_kids'
+
+- model: card.cardtag
+  pk: 3
+  fields:
+    name: 'Можно курящим'
+    code: 'allowed_smoking'
+
+- model: card.cardtag
+  pk: 4
+  fields:
+    name: 'Можно пьющим'
+    code: 'allowed_drinkers'
+
+- model: card.cardtag
+  pk: 5
+  fields:
+    name: 'Квартира уже найдена'
+    code: 'apartments_already_found'
