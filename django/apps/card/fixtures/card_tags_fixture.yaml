@@ -1,0 +1,13 @@
+- model: card.cardtag
+  pk: 1
+  fields:
+    code: 'paykeeper'
+    name: 'Российская карта'
+    available_currencies: [3]
+
+- model: card.cardtag
+  pk: 1
+  fields:
+    code: 'paykeeper'
+    name: 'Российская карта'
+    available_currencies: [3]

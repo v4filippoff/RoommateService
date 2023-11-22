@@ -5,8 +5,6 @@ from django.db import models
 from django.utils import timezone
 from phonenumber_field.modelfields import PhoneNumberField
 
-from apps.city.models import City
-
 
 class CustomUserManager(BaseUserManager):
     """Переопределенный менеджер модели пользователя."""
@@ -51,11 +49,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     dob = models.DateField(verbose_name='Дата рождения', null=True, blank=True,)
     gender = models.CharField(max_length=6, verbose_name='Пол', choices=Genders.choices, blank=True,)
     status = models.CharField(max_length=100, verbose_name='Статус', choices=Statuses.choices,
-                              default=Statuses.LOOKING_FOR, blank=True)
+                              default=Statuses.LOOKING_FOR)
     about_me = models.CharField(max_length=2048, verbose_name='Обо мне', blank=True)
     avatar = models.ImageField(upload_to=upload_avatar, verbose_name='Аватарка', blank=True, null=True,
                                validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'heic'])])
-    city = models.ForeignKey(City, on_delete=models.SET_NULL, null=True, verbose_name='Город')
     datetime_consent_to_processing_of_personal_data = models.DateTimeField(default=None, null=True,
                                                                            verbose_name='Дата и время согласия пользователя на обработку персональных данных')
 

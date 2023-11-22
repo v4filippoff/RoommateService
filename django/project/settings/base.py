@@ -36,6 +36,8 @@ INSTALLED_APPS = [
 
     'apps.user',
     'apps.city',
+    'apps.message',
+    'apps.card',
 ]
 
 MIDDLEWARE = [
