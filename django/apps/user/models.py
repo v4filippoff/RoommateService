@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.core.validators import RegexValidator, FileExtensionValidator
@@ -34,8 +36,8 @@ class User(AbstractBaseUser, PermissionsMixin):
         LOOKING_FOR = 'looking_for', 'В поиске сожителя'
         NOT_LOOKING_FOR_ANYONE = 'not_looking_for_anyone', 'Никого не ищу'
 
-    def upload_avatar(instance, filename):
-        return f'users/{instance.id}/avatar/{filename}'
+    def upload_avatar(self, filename):
+        return f'users/{self.id}/avatar/{filename}'
 
     phone_number = PhoneNumberField(verbose_name='Номер телефона', unique=True,
                                     error_messages={'unique': 'Пользователь с таким номером телефона уже существует.'})
@@ -53,6 +55,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     about_me = models.CharField(max_length=2048, verbose_name='Обо мне', blank=True)
     avatar = models.ImageField(upload_to=upload_avatar, verbose_name='Аватарка', blank=True, null=True,
                                validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'heic'])])
+    avatar_preview = models.ImageField(upload_to=upload_avatar, verbose_name='Аватарка-превью', blank=True, null=True,
+                                       validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'heic'])])
     datetime_consent_to_processing_of_personal_data = models.DateTimeField(default=None, null=True,
                                                                            verbose_name='Дата и время согласия пользователя на обработку персональных данных')
 
@@ -73,21 +77,52 @@ class User(AbstractBaseUser, PermissionsMixin):
         verbose_name_plural = 'Пользователи'
 
     def __str__(self):
-        return f'{self.get_full_name()} ({self.phone_number})'
+        return f'{self.full_name} ({self.phone_number})'
 
     @property
     def is_registered(self) -> bool:
         return bool(self.datetime_consent_to_processing_of_personal_data)
 
-    def get_full_name(self) -> str:
+    @property
+    def full_name(self) -> str:
         self.last_name: str
         self.first_name: str
         self.patronymic: str
         return f'{self.last_name.title()} {self.first_name.title()} {self.patronymic.title()}'.strip()
 
-    def get_short_name(self) -> str:
+    @property
+    def short_name(self) -> str:
         self.first_name: str
         return self.first_name.title().strip()
+
+    @property
+    def age(self) -> int:
+        self.dob: date
+        today = date.today()
+        age = today.year - self.dob.year - ((today.month, today.day) < (self.dob.month, self.dob.day))
+        return age
+
+
+class UserSocialLink(models.Model):
+    """Ссылка на соц. сеть для связи с пользователем"""
+
+    class Types(models.TextChoices):
+        """Тип"""
+        TELEGRAM = 'telegram', 'Telegram'
+        INSTAGRAM = 'instagram', 'Instagram'
+        VK = 'vk', 'Вконтакте'
+        FACEBOOK = 'facebook', 'Facebook'
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='social_links', verbose_name='Пользователь')
+    type = models.CharField(max_length=100, verbose_name='Статус', choices=Types.choices)
+    url = models.URLField(verbose_name='Ссылка')
+
+    class Meta:
+        verbose_name = 'Ссылка на соц. сеть'
+        verbose_name_plural = 'Ссылки на соц. сеть'
+
+    def __str__(self):
+        return str(self.url)
 
 
 class CodeAbstract(models.Model):

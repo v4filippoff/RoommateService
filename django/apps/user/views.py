@@ -1,8 +1,7 @@
 import os
-from dataclasses import asdict
 
-from drf_spectacular.utils import extend_schema, extend_schema_view, inline_serializer
-from rest_framework import viewsets, serializers, status
+from drf_spectacular.utils import extend_schema, extend_schema_view
+from rest_framework import viewsets, status, mixins
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -12,7 +11,8 @@ from .dto import UserAuthorizationAttemptDTO
 from .exceptions import AuthorizationError, RegistrationError
 from .models import User
 from .permissions import IsFullRegistered
-from .serializers import AuthorizationSerializer, CreateOTPSerializer, RegistrationSerializer, UserSerializer
+from .serializers import AuthorizationSerializer, CreateOTPSerializer, RegistrationSerializer, MyUserSerializer, \
+    RetrieveUserSerializer, JWTTokenSerializer
 from .services import UserAuthorizationService, AuthorizationCodeService, UserService
 
 
@@ -25,28 +25,38 @@ from .services import UserAuthorizationService, AuthorizationCodeService, UserSe
     authorization=extend_schema(
         summary='Получение токена авторизации',
         request=AuthorizationSerializer,
-        responses={200: inline_serializer('authorization', {'access': serializers.CharField(),
-                                                            'refresh': serializers.CharField(),
-                                                            'is_registered': serializers.BooleanField()})}
+        responses={200: JWTTokenSerializer}
     ),
     registration=extend_schema(
         summary='Регистрация пользователя',
         request=RegistrationSerializer,
-        responses={201: UserSerializer}
+        responses={201: MyUserSerializer}
     ),
     show_me=extend_schema(
         summary='Получить данные пользователя',
-        responses={200: UserSerializer}
+        responses={200: MyUserSerializer}
     ),
     update_me=extend_schema(
         summary='Обновить данные пользователя',
-        request=UserSerializer,
-        responses={200: UserSerializer}
+        request=MyUserSerializer,
+        responses={200: MyUserSerializer}
+    ),
+    retrieve=extend_schema(
+        summary='Посмотреть профиль пользователя',
+        responses={200: RetrieveUserSerializer}
     ),
 )
-class UserViewSet(viewsets.GenericViewSet):
+class UserViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
     """ViewSet для пользователей"""
     queryset = User.objects.all()
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        match self.action:
+            case 'registration' | 'show_me' | 'update_me' | 'retrieve':
+                return queryset.prefetch_related('social_links')
+            case _:
+                return queryset
 
     def get_serializer_class(self):
         match self.action:
@@ -57,9 +67,11 @@ class UserViewSet(viewsets.GenericViewSet):
             case 'registration':
                 return RegistrationSerializer
             case 'show_me':
-                return UserSerializer
+                return MyUserSerializer
             case 'update_me':
-                return UserSerializer
+                return MyUserSerializer
+            case 'retrieve':
+                return RetrieveUserSerializer
 
     def get_permissions(self):
         if self.action in ('create_otp', 'authorization',):
@@ -100,7 +112,7 @@ class UserViewSet(viewsets.GenericViewSet):
         except AuthorizationError as exc:
             raise ValidationError(str(exc))
         else:
-            return Response(asdict(token), status=status.HTTP_200_OK)
+            return Response(JWTTokenSerializer(token).data, status=status.HTTP_200_OK)
 
     @action(methods=['POST'], detail=False, url_path='registration', url_name='registration')
     def registration(self, request):
@@ -112,7 +124,7 @@ class UserViewSet(viewsets.GenericViewSet):
         except RegistrationError as exc:
             raise ValidationError(str(exc))
         else:
-            return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+            return Response(MyUserSerializer(user).data, status=status.HTTP_201_CREATED)
 
     @action(methods=['GET'], detail=False, url_path='show-me', url_name='show_me')
     def show_me(self, request):
@@ -125,4 +137,4 @@ class UserViewSet(viewsets.GenericViewSet):
         serializer.is_valid(raise_exception=True)
         user_service = UserService(request.user)
         user = user_service.update_user(**serializer.validated_data)
-        return Response(UserSerializer(user).data, status=status.HTTP_200_OK)
+        return Response(MyUserSerializer(user).data, status=status.HTTP_200_OK)

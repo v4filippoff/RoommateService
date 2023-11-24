@@ -4,16 +4,19 @@ import string
 from datetime import timedelta, datetime
 
 import phonenumbers
+from PIL import Image
 from constance import config
+from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.db import transaction
 from django.utils import timezone
 from phonenumbers import NumberParseException
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from utils.images import create_round_thumbnail
 from .dto import UserAuthorizationAttemptDTO, JWTTokenDTO
 from .enums import UserIdentifierType
 from .exceptions import AuthorizationError, RegistrationError
-from .models import AuthorizationCode, User, CodeAbstract
+from .models import AuthorizationCode, User, CodeAbstract, UserSocialLink
 from ..message.dto import MessageDTO, MessageResultDTO
 from ..message.enums import MessageType, MessageSendingStatus
 from ..message.service import MessageSender, get_message_sender
@@ -39,7 +42,7 @@ class UserService:
 
         if 'email' in user_data:
             message_service = UserMessageService(recipients=[user.email])
-            message_service.send_notification_after_success_registration(user_name=user.get_short_name())
+            message_service.send_notification_after_success_registration(user_name=user.short_name)
 
         return user
 
@@ -61,7 +64,27 @@ class UserService:
     def update_user(self, **new_user_data) -> User:
         """Обновить данные пользователя"""
         for field, value in new_user_data.items():
-            setattr(self._user, field, value)
+            match field:
+                case 'social_links':
+                    for item in value:
+                        UserSocialLink.objects.update_or_create(user=self._user,
+                                                                type=item['type'],
+                                                                defaults={'url': item['url']})
+                case 'avatar':
+                    self._user.avatar.save(value.name, value, save=False)
+
+                    avatar = Image.open(value)
+                    avatar_preview_size = 100
+                    thumb_io = create_round_thumbnail(avatar, size=avatar_preview_size)
+
+                    avatar_preview_name = f'{value.name.split(".")[0]}_mini.png'
+                    self._user.avatar_preview.save(avatar_preview_name,
+                                                   InMemoryUploadedFile(thumb_io,
+                                                                        None, avatar_preview_name,
+                                                                        f'image/png', thumb_io.tell, None),
+                                                   save=False)
+                case _:
+                    setattr(self._user, field, value)
         self._user.save()
         return self._user
 
