@@ -1,3 +1,5 @@
+from datetime import date
+
 from rest_framework import serializers
 
 from .models import CardTag, CardPhoto, Card
@@ -10,7 +12,7 @@ class CardTagSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CardTag
-        fields = ('name', 'code', 'order',)
+        fields = ('id', 'name', 'order',)
 
 
 class CardPhotoSerializer(serializers.ModelSerializer):
@@ -18,7 +20,7 @@ class CardPhotoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CardPhoto
-        fields = ('card', 'photo',)
+        fields = ('photo',)
 
 
 class ShortCardSerializer(serializers.ModelSerializer):
@@ -42,7 +44,7 @@ class FullCardSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Card
-        fields = ('id', 'owner', 'header', 'description', 'city', 'limit', 'created_at', 'deadline', 'tags')
+        fields = ('id', 'owner', 'header', 'description', 'city', 'limit', 'created_at', 'deadline', 'photos', 'tags')
 
 
 class MyCardSerializer(serializers.ModelSerializer):
@@ -54,4 +56,19 @@ class MyCardSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Card
-        fields = ('id', 'owner', 'header', 'description', 'city', 'limit', 'created_at', 'deadline', 'status', 'tags')
+        fields = ('id', 'owner', 'header', 'description', 'city', 'limit', 'created_at', 'deadline', 'status', 'photos',
+                  'tags')
+
+
+class CreateCardSerializer(serializers.ModelSerializer):
+    """Сериализатор для создания карточки"""
+    photos = serializers.ListField(child=serializers.ImageField(), required=False, write_only=True)
+
+    class Meta:
+        model = Card
+        fields = ('header', 'description', 'city', 'limit', 'deadline', 'photos', 'tags')
+
+    def validate_deadline(self, value: date):
+        if value < date.today():
+            raise serializers.ValidationError('Дата не может быть прошедшей.')
+        return value

@@ -8,7 +8,6 @@ from apps.user.models import User
 class CardTag(models.Model):
     """Тег карточки"""
     name = models.CharField(max_length=255, verbose_name='Название')
-    code = models.CharField(max_length=255, verbose_name='Символьный код')
     order = models.PositiveIntegerField(default=0, verbose_name='Сортировка')
 
     class Meta:

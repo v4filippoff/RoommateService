@@ -20,7 +20,7 @@ from .services import UserAuthorizationService, AuthorizationCodeService, UserSe
     create_otp=extend_schema(
         summary='Создание одноразового кода (OTP)',
         request=CreateOTPSerializer,
-        responses={204: None}
+        responses={201: None}
     ),
     authorization=extend_schema(
         summary='Получение токена авторизации',
@@ -74,12 +74,13 @@ class UserViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
                 return RetrieveUserSerializer
 
     def get_permissions(self):
-        if self.action in ('create_otp', 'authorization',):
-            self.permission_classes = (AllowAny,)
-        elif self.action in ('registration',):
-            self.permission_classes = (IsAuthenticated,)
-        else:
-            self.permission_classes = (IsAuthenticated, IsFullRegistered)
+        match self.action:
+            case 'create_otp' | 'authorization':
+                self.permission_classes = (AllowAny,)
+            case 'registration':
+                self.permission_classes = (IsAuthenticated,)
+            case _:
+                self.permission_classes = (IsAuthenticated, IsFullRegistered)
         return [permission() for permission in self.permission_classes]
 
     @action(methods=['POST'], detail=False, url_path='create-otp', url_name='create_otp')
