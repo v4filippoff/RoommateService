@@ -23,6 +23,12 @@ class CardPhotoSerializer(serializers.ModelSerializer):
         fields = ('photo',)
 
 
+class CardStatusSerializer(serializers.Serializer):
+    """Сериализатор для статуса карточки"""
+    value = serializers.CharField()
+    label = serializers.CharField()
+
+
 class ShortCardSerializer(serializers.ModelSerializer):
     """Сериализатор для краткой информации о карточке"""
     owner = ShortUserSerializer()
@@ -32,7 +38,18 @@ class ShortCardSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Card
-        fields = ('id', 'owner', 'header', 'city', 'limit', 'deadline', 'photos', 'tags')
+        fields = ('id', 'owner', 'header', 'city', 'limit', 'created_at', 'deadline', 'status', 'photos', 'tags')
+
+    def to_representation(self, instance):
+        user = self.context['request'].user
+        if instance.owner == user:
+            return super().to_representation(instance)
+        else:
+            excluded_fields = ['created_at', 'status']
+            data = super().to_representation(instance)
+            for field in excluded_fields:
+                data.pop(field, None)
+            return data
 
 
 class FullCardSerializer(serializers.ModelSerializer):
@@ -44,20 +61,19 @@ class FullCardSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Card
-        fields = ('id', 'owner', 'header', 'description', 'city', 'limit', 'created_at', 'deadline', 'photos', 'tags')
-
-
-class MyCardSerializer(serializers.ModelSerializer):
-    """Сериализатор для полной информации о собственной карточке пользователя"""
-    owner = ShortUserSerializer()
-    city = CitySerializer()
-    photos = CardPhotoSerializer(many=True)
-    tags = CardTagSerializer(many=True)
-
-    class Meta:
-        model = Card
         fields = ('id', 'owner', 'header', 'description', 'city', 'limit', 'created_at', 'deadline', 'status', 'photos',
                   'tags')
+
+    def to_representation(self, instance):
+        user = self.context['request'].user
+        if instance.owner == user:
+            return super().to_representation(instance)
+        else:
+            excluded_fields = ['created_at', 'status']
+            data = super().to_representation(instance)
+            for field in excluded_fields:
+                data.pop(field, None)
+            return data
 
 
 class CreateCardSerializer(serializers.ModelSerializer):

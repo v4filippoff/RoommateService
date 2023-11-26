@@ -7,7 +7,7 @@ from rest_framework.response import Response
 
 from .exceptions import CardActionError
 from .models import Card, CardTag
-from .serializers import CreateCardSerializer, MyCardSerializer, CardTagSerializer
+from .serializers import CreateCardSerializer, CardTagSerializer, ShortCardSerializer, FullCardSerializer
 from .services import CardService
 from ..user.permissions import IsFullRegistered
 
@@ -16,7 +16,15 @@ from ..user.permissions import IsFullRegistered
     create=extend_schema(
         summary='Создание карточки',
         request=CreateCardSerializer,
-        responses={201: MyCardSerializer}
+        responses={201: FullCardSerializer}
+    ),
+    by_owner=extend_schema(
+        summary='Список карточек пользователя',
+        responses={200: ShortCardSerializer}
+    ),
+    retrieve=extend_schema(
+        summary='Детальный просмотр карточки',
+        responses={200: FullCardSerializer}
     ),
     tags=extend_schema(
         summary='Список доступных тегов',
@@ -31,6 +39,10 @@ class CardViewSet(viewsets.GenericViewSet):
         match self.action:
             case 'create':
                 return CreateCardSerializer
+            case 'by_owner':
+                return ShortCardSerializer
+            case 'retrieve':
+                return FullCardSerializer
             case 'tags':
                 return CardTagSerializer
 
@@ -51,10 +63,33 @@ class CardViewSet(viewsets.GenericViewSet):
             card = CardService.create(**serializer.validated_data)
         except CardActionError as exc:
             raise ValidationError(str(exc))
-        return Response(MyCardSerializer(card).data, status=status.HTTP_201_CREATED)
+        return Response(FullCardSerializer(card).data, status=status.HTTP_201_CREATED)
+
+    @action(methods=['GET'], detail=False, url_path='by-owner/(?P<owner_id>[^/.]+)', url_name='by_owner')
+    def by_owner(self, request, owner_id):
+        queryset = self.get_queryset()
+        try:
+            owner_id = int(owner_id)
+        except (TypeError, ValueError):
+            pass
+        if request.user.id == owner_id:
+            card_status = request.query_params.get('status')
+            if card_status:
+                queryset = queryset.filter(status=card_status)
+        else:
+            queryset = queryset.filter(status=Card.Statuses.ACTIVE)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def retrieve(self, request, pk):
+        obj = self.get_object()
+        serializer = self.get_serializer(obj)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(methods=['GET'], detail=False, url_path='tags', url_name='tags')
     def tags(self, request):
         queryset = CardTag.objects.all()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
