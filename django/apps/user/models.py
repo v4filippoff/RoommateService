@@ -120,6 +120,7 @@ class UserSocialLink(models.Model):
     class Meta:
         verbose_name = 'Ссылка на соц. сеть'
         verbose_name_plural = 'Ссылки на соц. сеть'
+        unique_together = ['user', 'type']
 
     def __str__(self):
         return str(self.url)

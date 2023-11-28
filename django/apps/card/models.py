@@ -1,4 +1,4 @@
-from django.core.validators import MinValueValidator, FileExtensionValidator
+from django.core.validators import MinValueValidator, FileExtensionValidator, MaxValueValidator
 from django.db import models
 
 from apps.city.models import City
@@ -31,7 +31,7 @@ class Card(models.Model):
     header = models.CharField(max_length=255, verbose_name='Заголовок')
     description = models.CharField(max_length=2048, verbose_name='Описание')
     city = models.ForeignKey(City, on_delete=models.SET_NULL, null=True, related_name='cards', verbose_name='Город')
-    limit = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)],
+    limit = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1), MaxValueValidator(10)],
                                         verbose_name='Максимальное количество сожителей')
     created_at = models.DateField(auto_now_add=True, verbose_name='Дата создания')
     deadline = models.DateField(default=None, null=True, verbose_name='Крайний срок')

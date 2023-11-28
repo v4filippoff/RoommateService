@@ -132,9 +132,9 @@ class UserViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
         serializer = self.get_serializer(instance=request.user)
         return Response(data=serializer.data, status=status.HTTP_200_OK)
 
-    @action(methods=['PATCH'], detail=False, url_path='update-me', url_name='update_me')
+    @action(methods=['PUT'], detail=False, url_path='update-me', url_name='update_me')
     def update_me(self, request):
-        serializer = self.get_serializer(data=request.data, partial=True)
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user_service = UserService(request.user)
         user = user_service.update_user(**serializer.validated_data)

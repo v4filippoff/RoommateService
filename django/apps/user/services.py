@@ -61,16 +61,22 @@ class UserService:
 
         return UserIdentifierType.UNDEFINED
 
+    @transaction.atomic
     def update_user(self, **new_user_data) -> User:
         """Обновить данные пользователя"""
         for field, value in new_user_data.items():
             match field:
                 case 'social_links':
+                    UserSocialLink.objects.filter(user=self._user).exclude(type__in=[i['type'] for i in value]).delete()
                     for item in value:
                         UserSocialLink.objects.update_or_create(user=self._user,
                                                                 type=item['type'],
                                                                 defaults={'url': item['url']})
                 case 'avatar':
+                    if value is None:
+                        self._user.avatar = None
+                        self._user.avatar_preview = None
+                        continue
                     self._user.avatar.save(value.name, value, save=False)
 
                     avatar = Image.open(value)
@@ -86,6 +92,7 @@ class UserService:
                 case _:
                     setattr(self._user, field, value)
         self._user.save()
+
         return self._user
 
 

@@ -48,7 +48,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
         fields = ('id', 'first_name', 'last_name', 'patronymic', 'email', 'dob', 'gender', 'status', 'about_me', 'avatar',
                   'social_links', 'consent_to_processing_of_personal_data')
         extra_kwargs = {f: {'required': True} for f in fields
-                        if f not in ('patronymic', 'avatar')}
+                        if f not in ('patronymic', 'avatar', 'social_links')}
 
     def validate(self, attrs):
         if not attrs['consent_to_processing_of_personal_data']:
@@ -76,12 +76,14 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
 class MyUserSerializer(serializers.ModelSerializer):
     """Сериализатор для личных данных пользователя"""
-    social_links = UserSocialLinkSerializer(many=True)
+    social_links = UserSocialLinkSerializer(many=True, required=False)
 
     class Meta:
         model = User
         fields = ('id', 'phone_number', 'first_name', 'last_name', 'patronymic', 'email', 'dob', 'gender', 'status',
                   'about_me', 'avatar', 'social_links',)
+        extra_kwargs = {f: {'required': True} for f in fields
+                        if f not in ('patronymic', 'avatar', 'social_links')}
         read_only_fields = ('phone_number',)
 
     def validate_avatar(self, value):

@@ -20,7 +20,19 @@ class CardPhotoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CardPhoto
-        fields = ('photo',)
+        fields = ('id', 'photo',)
+
+        extra_kwargs = {
+            'id': {'read_only': False, 'required': False},
+            'photo': {'required': False},
+        }
+
+    def validate(self, data):
+        if 'id' not in data and 'photo' not in data:
+            raise serializers.ValidationError('Не передан файл.', code='required')
+        if 'id' in data and 'photo' in data:
+            raise serializers.ValidationError('Нельзя одновременно передать id и photo', code='invalid')
+        return data
 
 
 class CardStatusSerializer(serializers.Serializer):
@@ -78,13 +90,15 @@ class FullCardSerializer(serializers.ModelSerializer):
 
 class CreateCardSerializer(serializers.ModelSerializer):
     """Сериализатор для создания карточки"""
-    photos = serializers.ListField(child=serializers.ImageField(), required=False, write_only=True)
+    photos = CardPhotoSerializer(many=True, required=False, default=[])
+    tags = serializers.PrimaryKeyRelatedField(queryset=CardTag.objects.all(), many=True, default=[])
 
     class Meta:
         model = Card
-        fields = ('header', 'description', 'city', 'limit', 'deadline', 'photos', 'tags')
+        fields = ('header', 'description', 'city', 'limit', 'deadline', 'status', 'photos', 'tags')
+        extra_kwargs = {'city': {'required': True}}
 
     def validate_deadline(self, value: date):
-        if value < date.today():
+        if value and value < date.today():
             raise serializers.ValidationError('Дата не может быть прошедшей.')
         return value

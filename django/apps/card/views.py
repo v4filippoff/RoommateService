@@ -7,6 +7,7 @@ from rest_framework.response import Response
 
 from .exceptions import CardActionError
 from .models import Card, CardTag
+from .permissions import IsCardOwner
 from .serializers import CreateCardSerializer, CardTagSerializer, ShortCardSerializer, FullCardSerializer
 from .services import CardService
 from ..user.permissions import IsFullRegistered
@@ -26,6 +27,11 @@ from ..user.permissions import IsFullRegistered
         summary='Детальный просмотр карточки',
         responses={200: FullCardSerializer}
     ),
+    update=extend_schema(
+        summary='Редактирование карточки',
+        request=CreateCardSerializer,
+        responses={200: FullCardSerializer}
+    ),
     tags=extend_schema(
         summary='Список доступных тегов',
         responses={200: CardTagSerializer}
@@ -33,7 +39,7 @@ from ..user.permissions import IsFullRegistered
 )
 class CardViewSet(viewsets.GenericViewSet):
     """ViewSet для карточек"""
-    queryset = Card.objects.all()
+    queryset = Card.objects.all().order_by('-created_at')
 
     def get_serializer_class(self):
         match self.action:
@@ -43,6 +49,8 @@ class CardViewSet(viewsets.GenericViewSet):
                 return ShortCardSerializer
             case 'retrieve':
                 return FullCardSerializer
+            case 'update':
+                return CreateCardSerializer
             case 'tags':
                 return CardTagSerializer
 
@@ -50,6 +58,8 @@ class CardViewSet(viewsets.GenericViewSet):
         match self.action:
             case 'tags':
                 self.permission_classes = (AllowAny,)
+            case 'update':
+                self.permission_classes = (IsAuthenticated, IsFullRegistered, IsCardOwner)
             case _:
                 self.permission_classes = (IsAuthenticated, IsFullRegistered)
         return [permission() for permission in self.permission_classes]
@@ -63,19 +73,17 @@ class CardViewSet(viewsets.GenericViewSet):
             card = CardService.create(**serializer.validated_data)
         except CardActionError as exc:
             raise ValidationError(str(exc))
-        return Response(FullCardSerializer(card).data, status=status.HTTP_201_CREATED)
+        return Response(FullCardSerializer(card, context=self.get_serializer_context()).data,
+                        status=status.HTTP_201_CREATED)
 
-    @action(methods=['GET'], detail=False, url_path='by-owner/(?P<owner_id>[^/.]+)', url_name='by_owner')
+    @action(methods=['GET'], detail=False, url_path=r'by-owner/(?P<owner_id>\d+)', url_name='by_owner')
     def by_owner(self, request, owner_id):
         queryset = self.get_queryset()
-        try:
-            owner_id = int(owner_id)
-        except (TypeError, ValueError):
-            pass
-        if request.user.id == owner_id:
+        if request.user.id == int(owner_id):
             card_status = request.query_params.get('status')
             if card_status:
                 queryset = queryset.filter(status=card_status)
+            queryset = CardService.get_cards_sorted_by_status(queryset)
         else:
             queryset = queryset.filter(status=Card.Statuses.ACTIVE)
         serializer = self.get_serializer(queryset, many=True)
@@ -85,6 +93,19 @@ class CardViewSet(viewsets.GenericViewSet):
         obj = self.get_object()
         serializer = self.get_serializer(obj)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def update(self, request, pk):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        obj = self.get_object()
+        card_service = CardService(obj)
+        try:
+            updated_card = card_service.update(**serializer.validated_data)
+        except CardActionError as exc:
+            raise ValidationError(str(exc))
+        else:
+            return Response(FullCardSerializer(updated_card, context=self.get_serializer_context()).data,
+                            status=status.HTTP_200_OK)
 
     @action(methods=['GET'], detail=False, url_path='tags', url_name='tags')
     def tags(self, request):
