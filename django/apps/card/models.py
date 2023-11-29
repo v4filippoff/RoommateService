@@ -86,3 +86,9 @@ class CardRequest(models.Model):
 
     def __str__(self):
         return f'{self.user} {self.card} {self.status}'
+
+    @property
+    def short_covering_letter(self) -> str:
+        if len(self.covering_letter) > 100:
+            return self.covering_letter[:100].rstrip() + '...'
+        return self.covering_letter

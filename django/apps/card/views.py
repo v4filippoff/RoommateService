@@ -8,8 +8,9 @@ from rest_framework.response import Response
 from .exceptions import CardActionError
 from .models import Card, CardTag
 from .permissions import IsCardOwner
-from .serializers import CreateCardSerializer, CardTagSerializer, ShortCardSerializer, FullCardSerializer
-from .services import CardService
+from .serializers import CreateCardSerializer, CardTagSerializer, ShortCardSerializer, FullCardSerializer, \
+    CreateCardRequestSerializer, ShortCardRequestWithDetailUserSerializer, FullCardRequestSerializer
+from .services import CardService, CardRequestService
 from ..user.permissions import IsFullRegistered
 
 
@@ -36,6 +37,20 @@ from ..user.permissions import IsFullRegistered
         summary='Список доступных тегов',
         responses={200: CardTagSerializer}
     ),
+    get_requests=extend_schema(
+        summary='Список заявок на данную карточку',
+        responses={200: ShortCardRequestWithDetailUserSerializer}
+    ),
+    create_request=extend_schema(
+        summary='Создание заявки на карточку',
+        request=CreateCardRequestSerializer,
+        responses={201: FullCardRequestSerializer}
+    ),
+    cancel_request=extend_schema(
+        summary='Отмена заявки на карточку',
+        request=None,
+        responses=204
+    ),
 )
 class CardViewSet(viewsets.GenericViewSet):
     """ViewSet для карточек"""
@@ -53,12 +68,16 @@ class CardViewSet(viewsets.GenericViewSet):
                 return CreateCardSerializer
             case 'tags':
                 return CardTagSerializer
+            case 'get_requests':
+                return ShortCardRequestWithDetailUserSerializer
+            case 'create_request':
+                return CreateCardRequestSerializer
 
     def get_permissions(self):
         match self.action:
             case 'tags':
                 self.permission_classes = (AllowAny,)
-            case 'update':
+            case 'update' | 'get_requests':
                 self.permission_classes = (IsAuthenticated, IsFullRegistered, IsCardOwner)
             case _:
                 self.permission_classes = (IsAuthenticated, IsFullRegistered)
@@ -113,4 +132,34 @@ class CardViewSet(viewsets.GenericViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @action(methods=['GET'], detail=True, url_path='get-requests', url_name='get_requests')
+    def get_requests(self, request, pk):
+        card = self.get_object()
+        queryset = CardRequestService.get_card_requests_sorted_by_status(card.requests.all())
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
+    @action(methods=['POST'], detail=True, url_path='create-request', url_name='create_request')
+    def create_request(self, request, pk):
+        """Создать заявку на карточку"""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.validated_data['card'] = self.get_object()
+        serializer.validated_data['user'] = request.user
+        try:
+            card_request = CardRequestService.create(**serializer.validated_data)
+        except CardActionError as exc:
+            raise ValidationError(str(exc))
+        return Response(FullCardRequestSerializer(card_request, context=self.get_serializer_context()).data,
+                        status=status.HTTP_201_CREATED)
+
+    @action(methods=['POST'], detail=True, url_path='cancel-request', url_name='cancel_request')
+    def cancel_request(self, request, pk):
+        """Отменить заявку на карточку"""
+        user = request.user
+        card = self.get_object()
+        try:
+            CardRequestService.cancel(user=user, card=card)
+        except CardActionError as exc:
+            raise ValidationError(str(exc))
+        return Response(status=status.HTTP_204_NO_CONTENT)

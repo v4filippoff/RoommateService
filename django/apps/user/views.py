@@ -14,6 +14,8 @@ from .permissions import IsFullRegistered
 from .serializers import AuthorizationSerializer, CreateOTPSerializer, RegistrationSerializer, MyUserSerializer, \
     RetrieveUserSerializer, JWTTokenSerializer
 from .services import UserAuthorizationService, AuthorizationCodeService, UserService
+from ..card.serializers import ShortCardRequestWithDetailCardSerializer
+from ..card.services import CardRequestService
 
 
 @extend_schema_view(
@@ -45,6 +47,10 @@ from .services import UserAuthorizationService, AuthorizationCodeService, UserSe
         summary='Посмотреть профиль пользователя',
         responses={200: RetrieveUserSerializer}
     ),
+    my_requests=extend_schema(
+        summary='Посмотреть собственные заявки на карточки',
+        responses={200: ShortCardRequestWithDetailCardSerializer}
+    ),
 )
 class UserViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
     """ViewSet для пользователей"""
@@ -72,6 +78,8 @@ class UserViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
                 return MyUserSerializer
             case 'retrieve':
                 return RetrieveUserSerializer
+            case 'my_requests':
+                return ShortCardRequestWithDetailCardSerializer
 
     def get_permissions(self):
         match self.action:
@@ -139,3 +147,9 @@ class UserViewSet(viewsets.GenericViewSet, mixins.RetrieveModelMixin):
         user_service = UserService(request.user)
         user = user_service.update_user(**serializer.validated_data)
         return Response(MyUserSerializer(user).data, status=status.HTTP_200_OK)
+
+    @action(methods=['GET'], detail=False, url_path='my-requests', url_name='my_requests')
+    def my_requests(self, request):
+        queryset = CardRequestService.get_card_requests_sorted_by_status(request.user.requests.all())
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

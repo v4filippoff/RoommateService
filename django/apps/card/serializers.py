@@ -2,7 +2,8 @@ from datetime import date
 
 from rest_framework import serializers
 
-from .models import CardTag, CardPhoto, Card
+from .models import CardTag, CardPhoto, Card, CardRequest
+from .services import CardService
 from ..city.serializers import CitySerializer
 from ..user.serializers import ShortUserSerializer
 
@@ -35,22 +36,22 @@ class CardPhotoSerializer(serializers.ModelSerializer):
         return data
 
 
-class CardStatusSerializer(serializers.Serializer):
-    """Сериализатор для статуса карточки"""
-    value = serializers.CharField()
-    label = serializers.CharField()
-
-
 class ShortCardSerializer(serializers.ModelSerializer):
     """Сериализатор для краткой информации о карточке"""
     owner = ShortUserSerializer()
     city = CitySerializer()
     photos = CardPhotoSerializer(many=True)
     tags = CardTagSerializer(many=True)
+    free_slots_number = serializers.SerializerMethodField()
 
     class Meta:
         model = Card
-        fields = ('id', 'owner', 'header', 'city', 'limit', 'created_at', 'deadline', 'status', 'photos', 'tags')
+        fields = ('id', 'owner', 'header', 'city', 'limit', 'free_slots_number', 'created_at', 'deadline', 'status',
+                  'photos', 'tags')
+
+    def get_free_slots_number(self, instance: Card) -> int:
+        card_service = CardService(instance)
+        return card_service.get_free_slots_number()
 
     def to_representation(self, instance):
         user = self.context['request'].user
@@ -70,11 +71,16 @@ class FullCardSerializer(serializers.ModelSerializer):
     city = CitySerializer()
     photos = CardPhotoSerializer(many=True)
     tags = CardTagSerializer(many=True)
+    free_slots_number = serializers.SerializerMethodField()
 
     class Meta:
         model = Card
-        fields = ('id', 'owner', 'header', 'description', 'city', 'limit', 'created_at', 'deadline', 'status', 'photos',
-                  'tags')
+        fields = ('id', 'owner', 'header', 'description', 'city', 'limit', 'free_slots_number', 'created_at',
+                  'deadline', 'status', 'photos', 'tags')
+
+    def get_free_slots_number(self, instance: Card) -> int:
+        card_service = CardService(instance)
+        return card_service.get_free_slots_number()
 
     def to_representation(self, instance):
         user = self.context['request'].user
@@ -102,3 +108,44 @@ class CreateCardSerializer(serializers.ModelSerializer):
         if value and value < date.today():
             raise serializers.ValidationError('Дата не может быть прошедшей.')
         return value
+
+
+class CreateCardRequestSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = CardRequest
+        fields = ('card', 'roommates_number', 'covering_letter')
+        extra_kwargs = {'card': {'read_only': True}, 'roommates_number': {'required': True}}
+
+
+class ShortCardRequestWithDetailUserSerializer(serializers.ModelSerializer):
+    user = ShortUserSerializer()
+    short_covering_letter = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CardRequest
+        fields = ('user', 'card', 'status', 'roommates_number', 'short_covering_letter')
+
+    def get_short_covering_letter(self, instance: CardRequest) -> str:
+        return instance.short_covering_letter
+
+
+class ShortCardRequestWithDetailCardSerializer(serializers.ModelSerializer):
+    card = ShortCardSerializer()
+    short_covering_letter = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CardRequest
+        fields = ('user', 'card', 'status', 'roommates_number', 'short_covering_letter')
+
+    def get_short_covering_letter(self, instance: CardRequest) -> str:
+        return instance.short_covering_letter
+
+
+class FullCardRequestSerializer(serializers.ModelSerializer):
+    user = ShortUserSerializer()
+    card = ShortCardSerializer()
+
+    class Meta:
+        model = CardRequest
+        fields = ('user', 'card', 'status', 'roommates_number', 'covering_letter')
