@@ -33,11 +33,13 @@ INSTALLED_APPS = [
     'phonenumber_field',
     'django_cleanup.apps.CleanupConfig',
     'constance',
+    'django_filters',
 
     'apps.user',
     'apps.city',
     'apps.message',
     'apps.card',
+    'apps.chat',
 ]
 
 MIDDLEWARE = [

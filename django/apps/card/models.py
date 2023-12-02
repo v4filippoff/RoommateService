@@ -37,6 +37,7 @@ class Card(models.Model):
     deadline = models.DateField(default=None, null=True, verbose_name='Крайний срок')
     status = models.CharField(max_length=100, verbose_name='Статус', choices=Statuses.choices, default=Statuses.ACTIVE)
     tags = models.ManyToManyField(CardTag, related_name='cards', verbose_name='Теги')
+    user_skips = models.ManyToManyField(User, related_name='card_skips', verbose_name='Пропуски пользователя')
 
     class Meta:
         verbose_name = 'Карточка'

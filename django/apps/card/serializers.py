@@ -149,3 +149,12 @@ class FullCardRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = CardRequest
         fields = ('user', 'card', 'status', 'roommates_number', 'covering_letter')
+
+
+class HandleCardRequestSerializer(serializers.ModelSerializer):
+    """Обработать заявку на карточку"""
+
+    class Meta:
+        model = CardRequest
+        fields = ('user', 'card', 'status')
+        extra_kwargs = {'card': {'read_only': True}}

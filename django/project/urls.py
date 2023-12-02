@@ -8,6 +8,7 @@ api_patterns = [
     path('', include('apps.user.urls')),
     path('', include('apps.city.urls')),
     path('', include('apps.card.urls')),
+    path('', include('apps.chat.urls')),
 ]
 
 urlpatterns = [
