@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'apps.message',
     'apps.card',
     'apps.chat',
+    'apps.review',
 ]
 
 MIDDLEWARE = [

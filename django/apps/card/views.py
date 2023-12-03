@@ -218,9 +218,9 @@ class CardViewSet(viewsets.GenericViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
-            updated_card_request = CardRequestService.handle_request(user=serializer.validated_data['user'],
-                                                                     card=self.get_object(),
-                                                                     new_status=serializer.validated_data['status'])
+            updated_card_request = CardRequestService.handle_request_by_user_and_card(user=serializer.validated_data['user'],
+                                                                                      card=self.get_object(),
+                                                                                      new_status=serializer.validated_data['status'])
         except CardActionError as exc:
             raise ValidationError(str(exc))
         else:

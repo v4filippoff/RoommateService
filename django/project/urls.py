@@ -9,6 +9,7 @@ api_patterns = [
     path('', include('apps.city.urls')),
     path('', include('apps.card.urls')),
     path('', include('apps.chat.urls')),
+    path('', include('apps.review.urls')),
 ]
 
 urlpatterns = [

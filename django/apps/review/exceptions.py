@@ -1,0 +1,2 @@
+class ReviewActionError(Exception):
+    pass

@@ -1,9 +1,11 @@
 from datetime import date
 
+from _decimal import Decimal
 from django.utils import timezone
 from rest_framework import serializers
 
 from .models import AuthorizationCode, User, UserSocialLink
+from ..review.services import ReviewService
 
 
 class JWTTokenSerializer(serializers.Serializer):
@@ -113,13 +115,17 @@ class ShortUserSerializer(serializers.ModelSerializer):
     """Сериализатор для краткой информации о пользователе"""
     short_name = serializers.SerializerMethodField()
     age = serializers.SerializerMethodField()
+    average_points = serializers.SerializerMethodField(allow_null=True)
 
     class Meta:
         model = User
-        fields = ('id', 'short_name', 'age', 'avatar_preview')
+        fields = ('id', 'short_name', 'age', 'avatar_preview', 'average_points')
 
     def get_short_name(self, instance: User) -> str:
         return instance.short_name
 
     def get_age(self, instance: User) -> int:
         return instance.age
+
+    def get_average_points(self, instance: User) -> Decimal:
+        return ReviewService.get_average_points(instance.onme_reviews.all())

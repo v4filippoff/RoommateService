@@ -151,6 +151,12 @@ class CardService:
 
         if new_card_status:
             self.change_status(new_card_status, save=False)
+            if new_card_status != Card.Statuses.ACTIVE:
+                requests_to_change_statuses = ([CardRequest.Statuses.PENDING, CardRequest.Statuses.APPROVED] if new_card_status == Card.Statuses.DRAFT
+                                               else [CardRequest.Statuses.PENDING])
+                requests_to_change = self._card.requests.filter(status__in=requests_to_change_statuses)
+                for r in requests_to_change:
+                    CardRequestService.handle_request(r, CardRequest.Statuses.REJECTED)
         if is_deadline_changed:
             self._card.deadline = new_card_deadline
 
@@ -184,8 +190,8 @@ class CardRequestService:
             raise CardActionError('Количество предлагаемых сожителей больше допустимого.')
         if user == card.owner:
             raise CardActionError('Нельзя подать заявку на собственную карточку.')
-        if user.requests.filter(status=CardRequest.Statuses.APPROVED).exists():
-            raise CardActionError('У вас уже есть одобренная заявка.')
+        if user.requests.filter(status=CardRequest.Statuses.APPROVED, card__status=Card.Statuses.ACTIVE).exists():
+            raise CardActionError('У вас уже есть активная одобренная заявка.')
         if user.requests.filter(card=card_request_data['card'], status=CardRequest.Statuses.PENDING).exists():
             raise CardActionError('Вы уже подали заявку на данную карточку.')
         if user.requests.filter(card=card_request_data['card'], status=CardRequest.Statuses.REJECTED).count() >= CardRequestService.LIMIT_FOR_REJECTED_CARDS:
@@ -237,27 +243,34 @@ class CardRequestService:
                                                                                     CardRequest.Statuses.APPROVED]).first()
 
     @staticmethod
-    @transaction.atomic
-    def handle_request(user: User, card: Card, new_status: CardRequest.Statuses) -> CardRequest:
-        """Обработать заявку на карточку - поменять статус"""
+    def handle_request_by_user_and_card(user: User, card: Card, new_status: CardRequest.Statuses) -> CardRequest:
+        """Обработать заявку на карточку по юзеру и карточке"""
         active_card_request = CardRequestService.get_active_card_request_by_card(user=user, card=card)
         if not active_card_request:
             raise CardActionError('Нет активной заявки пользователя на данную карточку.')
         if active_card_request.status == CardRequest.Statuses.REJECTED:
             raise CardActionError('Данная заявка отклонена.')
-        active_card_request.status = new_status
-        active_card_request.save()
+
+        active_card_request = CardRequestService.handle_request(active_card_request, new_status)
+        return active_card_request
+
+    @staticmethod
+    @transaction.atomic
+    def handle_request(card_request: CardRequest, new_status: CardRequest.Statuses) -> CardRequest:
+        """Обработать заявку на карточку - поменять статус"""
+        card_request.status = new_status
+        card_request.save()
 
         status_label = next(item[1] for item in CardRequest.Statuses.choices if item[0] == new_status)
         chat_message_to_owner = {
             'sender': None,
-            'receiver': user,
-            'card': card,
+            'receiver': card_request.user,
+            'card': card_request.card,
             'content': f'Новый статус по заявке: "{status_label}".'
         }
         ChatMessageService.create(**chat_message_to_owner)
 
-        return active_card_request
+        return card_request
 
     @staticmethod
     def get_card_requests_sorted_by_status(queryset: QuerySet[CardRequest]) -> list[CardRequest]:
